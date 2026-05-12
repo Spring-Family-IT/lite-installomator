@@ -1603,16 +1603,6 @@ adobeacrobatprodc)
     blockingProcesses=( "Acrobat Pro DC" )
     Company="Adobe"
     ;;
-adobeconnect)
-    # credit: Oh4sh0 https://github.com/Oh4sh0
-    # Comment by Søren: I do not know this software.
-    # Looks like it's an Adobe installer in an app, so it will probably not work
-    name="AdobeConnectInstaller"
-    type="dmg"
-    downloadURL="http://www.adobe.com/go/ConnectSetupMac"
-    appNewVersion=$(curl -fs https://helpx.adobe.com/adobe-connect/connect-downloads-updates.html | grep "Mac" | grep version | head -1 | sed -E 's/.*\(version ([0-9\.]*),.*/\1/g')
-    expectedTeamID="JQ525L2MZD"
-    ;;
 adobecreativeclouddesktop)
     name="Adobe Creative Cloud"
     appName="Creative Cloud.app"
@@ -1636,13 +1626,6 @@ adobecreativeclouddesktop)
     expectedTeamID="JQ525L2MZD"
     blockingProcesses=( "Creative Cloud" )
     Company="Adobe"
-    ;;
-adobedigitaleditions)
-    name="Adobe Digital Editions"
-    type="pkgInDmg"
-    downloadURL=$(curl -fs https://www.adobe.com/solutions/ebook/digital-editions/download.html | grep -oE 'https[^"]+\.dmg')
-    appNewVersion=$(curl -fs https://www.adobe.com/solutions/ebook/digital-editions/download.html | grep -o 'Adobe Digital Editions.*Installers' | awk -F' ' '{ print $4 }')
-    expectedTeamID="JQ525L2MZD"
     ;;
 adobereaderdc|\
 adobereaderdc-install|\

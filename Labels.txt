@@ -3,9 +3,7 @@
 abetterfinderattributes7
 abetterfinderrename12
 adobeacrobatprodc
-adobeconnect
 adobecreativeclouddesktop
-adobedigitaleditions
 adobereaderdc
 adobereaderdc-install
 adobereaderdc-update

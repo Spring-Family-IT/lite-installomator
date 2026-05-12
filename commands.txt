@@ -1,0 +1,83 @@
+# =============================================================================
+# lite-installomator — COMMANDS REFERENCE
+# =============================================================================
+#
+# All commands assume you're at the repo root: /Users/Shared/repos/lite-installomator/
+# Lines starting with `#` are comments; the others are runnable as-is.
+
+
+# =============================================================================
+# Testing a label
+# =============================================================================
+# DEBUG=1 is the default — downloads + verifies but does not install.
+
+./assemble.sh <label>                      # DEBUG=1 (downloads + verifies)
+./assemble.sh <label> DEBUG=2              # exits after version detection, no download
+sudo ./assemble.sh <label> DEBUG=0         # actually installs
+sudo ./assemble.sh <label> DEBUG=0 NOTIFY=silent
+
+# Worked examples:
+./assemble.sh lucidlink
+./assemble.sh firefox DEBUG=2
+sudo ./assemble.sh vscode DEBUG=0 NOTIFY=silent
+
+# --- Testing a draft label from an out-of-repo directory ---
+# Useful when iterating before committing into fragments/labels/.
+# Custom paths are merged before the default labels dir, so they override.
+./assemble.sh -l ~/Documents/InstallomatorLabels <label>
+
+
+# =============================================================================
+# Rebuilding the script
+# =============================================================================
+# Regenerate Installomator.sh + Labels.txt from fragments after editing
+# anything under fragments/.
+
+./assemble.sh --script
+
+
+# =============================================================================
+# Building a PKG release
+# =============================================================================
+# Version is read from fragments/version.sh. The PKG payload has DEBUG=0
+# regardless of which variant you build.
+
+./assemble.sh --pkg-unsigned       # unsigned, ready for internal distribution
+./assemble.sh --pkg                # signed (needs Developer ID Installer cert)
+./assemble.sh --notarize           # signed + notarized
+
+# Signing identity is configured at utils/assemble.sh:9.
+
+
+# =============================================================================
+# Cutting a GitHub release
+# =============================================================================
+# Convention so far: bare-version tag (no `v` prefix), e.g. 10.10-lite.
+
+shasum -a 256 Installomator-<version>.pkg
+
+gh release create <version> \
+    Installomator-<version>.pkg \
+    --title "<version>" \
+    --notes "Unsigned PKG release of <version>" \
+    --latest
+
+# --- Inspect the latest release without `gh` ---
+curl -fsL "https://api.github.com/repos/Spring-Family-IT/lite-installomator/releases/latest"
+
+
+# =============================================================================
+# Label development diagnostics
+# =============================================================================
+
+# --- Inspect a label's appNewVersion redirect chain ---
+# Useful when the version regex isn't extracting what you expect.
+curl -fsIL "<downloadURL>" | grep -i "^location"
+
+# --- Find a packageID after installing the app ---
+# Add this to the label for receipt-based version detection.
+pkgutil --pkgs | grep -i <vendor>
+
+# --- Verify the version key an installed app advertises ---
+defaults read "/Applications/<App>.app/Contents/Info.plist" CFBundleShortVersionString
+defaults read "/Applications/<App>.app/Contents/Info.plist" CFBundleVersion
