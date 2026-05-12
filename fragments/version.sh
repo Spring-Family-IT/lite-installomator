@@ -1,1 +1,1 @@
-10.10-lite-beta
+10.11-lite-beta

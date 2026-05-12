@@ -13,10 +13,10 @@ dev_keychain_label="notary-scriptingosx"
 
 # parse arguments
 
-zparseopts -D -E -a opts r -run s -script p -pkg n -notarize h -help -labels+:=label_args l+:=label_args
+zparseopts -D -E -a opts r -run s -script p -pkg -pkg-unsigned n -notarize h -help -labels+:=label_args l+:=label_args
 
 if (( ${opts[(I)(-h|--help)]} )); then
-  echo "usage: assemble.sh [--script|--pkg|--notarize] [-labels path/to/labels ...] [arguments...]"
+  echo "usage: assemble.sh [--script|--pkg|--pkg-unsigned|--notarize] [-labels path/to/labels ...] [arguments...]"
   echo
   echo "builds and runs the installomator script from the fragements."
   echo "additional arguments are passed into the Installomator script for testing."
@@ -35,6 +35,13 @@ if (( ${opts[(I)(-p|--pkg)]} )); then
     runScript=0
     buildScript=1
     buildPkg=1
+fi
+
+if (( ${opts[(I)(--pkg-unsigned)]} )); then
+    runScript=0
+    buildScript=1
+    buildPkg=1
+    skipSigning=1
 fi
 
 if (( ${opts[(I)(-n|--notarize)]} )); then
@@ -164,11 +171,18 @@ if [[ buildPkg -eq 1 ]]; then
 
     productpath="${repo_dir}/${pkgname}-${version}.pkg"
 
-    productbuild --package "${pkgpath}" \
-                 --version "${version}" \
-                 --identifier "${identifier}" \
-                 --sign "${signature}" \
-                 "${productpath}"
+    if [[ $skipSigning -eq 1 ]]; then
+        productbuild --package "${pkgpath}" \
+                     --version "${version}" \
+                     --identifier "${identifier}" \
+                     "${productpath}"
+    else
+        productbuild --package "${pkgpath}" \
+                     --version "${version}" \
+                     --identifier "${identifier}" \
+                     --sign "${signature}" \
+                     "${productpath}"
+    fi
 
     # clean up project folder
     rm -Rf "${projectfolder}"
