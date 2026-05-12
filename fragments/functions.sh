@@ -333,8 +333,8 @@ checkRunningProcesses() {
                           BLOCKING_PROCESS_ACTION=kill
                         else
                             # give the user a bit of time to quit apps
-                            printlog "waiting 30 seconds for processes to quit"
-                            sleep 30
+                            printlog "waiting 20 seconds for processes to quit"
+                            sleep 20
                         fi
                         ;;
                     kill)
@@ -356,16 +356,16 @@ checkRunningProcesses() {
                           printlog "telling app $x to quit"
                           runAsUser osascript -e "tell app \"$x\" to quit"
                           # give the user a bit of time to quit apps
-                          printlog "waiting 30 seconds for processes to quit"
-                          sleep 30
+                          printlog "waiting 20 seconds for processes to quit"
+                          sleep 20
                           printlog "Changing BLOCKING_PROCESS_ACTION to kill"
                           BLOCKING_PROCESS_ACTION=kill
                         else
                           printlog "telling app $x to quit"
                           runAsUser osascript -e "tell app \"$x\" to quit"
                           # give the user a bit of time to quit apps
-                          printlog "waiting 30 seconds for processes to quit"
-                          sleep 30
+                          printlog "waiting 20 seconds for processes to quit"
+                          sleep 20
                         fi
                       fi
                       ;;
@@ -383,8 +383,8 @@ checkRunningProcesses() {
                         printlog "telling app $x to quit"
                         runAsUser osascript -e "tell app \"$x\" to quit"
                         # give the user a bit of time to quit apps
-                        printlog "waiting 30 seconds for processes to quit"
-                        sleep 30
+                        printlog "waiting 20 seconds for processes to quit"
+                        sleep 20
                       fi
                       ;;
                     tell_user|tell_user_then_kill)
@@ -392,8 +392,8 @@ checkRunningProcesses() {
                       printlog "telling app $x to quit"
                       runAsUser osascript -e "tell app \"$x\" to quit"
                       # give the user a bit of time to quit apps
-                      printlog "waiting 30 seconds for processes to quit"
-                      sleep 30
+                      printlog "waiting 20 seconds for processes to quit"
+                      sleep 20
                       if [[ $i > 1 && $BLOCKING_PROCESS_ACTION = tell_user_then_kill ]]; then
                           printlog "Changing BLOCKING_PROCESS_ACTION to kill"
                           BLOCKING_PROCESS_ACTION=kill
