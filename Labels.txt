@@ -47,7 +47,6 @@ clickshare
 clickup
 cmake
 coconutbattery
-code42
 crashplan
 crashplansmb
 cursorai
@@ -94,7 +93,6 @@ golang
 googleadseditor
 googlechromepkg
 googledrive
-googledrivebackupandsync
 googledrivefilestream
 googleearth
 googlegemini
@@ -110,6 +108,7 @@ graphicconverter10
 gyazo
 gyazogif
 handbrake
+hexfiend
 homebrew
 i1profiler
 ibarcoder
@@ -121,7 +120,6 @@ jabradirect
 jdk17
 jdk18
 jdk19
-jdk20
 jetbrainswebstorm
 jre8
 knockknock
@@ -145,6 +143,7 @@ logitechoptions
 logitechoptionsplus
 logitechoptionsplusoffline
 logitune
+loom
 lucidlink
 lucidlinkclassic
 macfuse
@@ -205,6 +204,7 @@ mountainduck
 nodejs
 nodejslts
 notion
+omnifocus4
 omnigraffle7
 omnissahorizonclient
 openvpnconnect
@@ -226,7 +226,6 @@ sketch
 sketchup2024
 sketchup2025
 sketchup2026
-sketchupviewer
 slack
 snagit
 snagit2024
@@ -252,7 +251,6 @@ tableplus
 tailscale
 teamviewer
 teamviewerqs
-techsmithcapture
 theunarchiver
 thunderbird
 thunderbird_intl
@@ -291,7 +289,6 @@ wacomdrivers
 warp
 wavescentral
 webex
-webexmeetings
 webexteams
 webextoolsremoval
 webexvdiplugin

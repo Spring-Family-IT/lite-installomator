@@ -351,8 +351,8 @@ if [[ $(/usr/bin/arch) == "arm64" ]]; then
         rosetta2=no
     fi
 fi
-VERSION="10.11-lite-beta"
-VERSIONDATE="2026-05-12"
+VERSION="10.11-lite"
+VERSIONDATE="2026-05-18"
 
 # MARK: Functions
 
@@ -1695,6 +1695,8 @@ airtable)
     name="Airtable"
     type="dmg"
     downloadURL="https://static.airtable.com/download/AirtableInstaller.dmg"
+    # Airtable's Squirrel update endpoint returns the current version as JSON.
+    appNewVersion=$(curl -sSL "https://airtable.com/desktopAppLatestVersion?version=0.0.0&platform=darwin" | sed -nE 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
     expectedTeamID="E22RZMX62E"
     ;;
 airtame)
@@ -1754,6 +1756,7 @@ asana)
     name="Asana"
     type="dmg"
     downloadURL="https://desktop-downloads.asana.com/darwin_universal/prod/latest/Asana.dmg"
+    appNewVersion=$(curl -fsL "https://desktop-downloads.asana.com/darwin_universal/prod/RELEASES.json" | sed -nE 's/.*"currentRelease"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
     expectedTeamID="A679L395M8"
     ;;
 aspera|\
@@ -1979,7 +1982,9 @@ chromeremotedesktop)
     type="pkgInDmg"
     packageID="com.google.pkg.ChromeRemoteDesktopHost"
     downloadURL="https://dl.google.com/chrome-remote-desktop/chromeremotedesktop.dmg"
-    appNewVersion=""
+    # No public version endpoint; Homebrew uses extract_plist on the same DMG.
+    # Proxy their cask version (~1-3 day lag).
+    appNewVersion=$(curl -fsL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/master/Casks/c/chrome-remote-desktop-host.rb" | sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p')
     expectedTeamID="EQHXZ8M8AV"
     ;;
 chronoagent)
@@ -2052,17 +2057,6 @@ coconutbattery)
     downloadURL="https://www.coconut-flavour.com/downloads/coconutBattery_4_latest.zip"
     appNewVersion=$(curl -fs https://www.coconut-flavour.com/coconutbattery/ | grep "<body" | sed -E 's/.*Download v([0-9+\.?]+).*/\1/')
     expectedTeamID="R5SC3K86L5"
-    ;;
-code42)
-    name="Code42"
-    type="pkgInDmg"
-    if [[ $(arch) == i386 ]]; then
-       downloadURL="https://download-preservation.code42.com/installs/agent/latest-mac.dmg"
-    elif [[ $(arch) == arm64 ]]; then
-       downloadURL="https://download-preservation.code42.com/installs/agent/latest-mac-arm64.dmg"
-    fi
-    expectedTeamID="9YV9435DHD"
-    blockingProcesses=( NONE )
     ;;
 crashplan)
     name="CrashPlan"
@@ -2512,16 +2506,13 @@ googledrivefilestream)
     appName="Google Drive.app"
     expectedTeamID="EQHXZ8M8AV"
     ;;
-googledrivebackupandsync)
-    name="Backup and Sync"
-    type="dmg"
-    downloadURL="https://dl.google.com/drive/InstallBackupAndSync.dmg"
-    expectedTeamID="EQHXZ8M8AV"
-    ;;
 googleearth)
     name="Google Earth Pro"
     type="pkgInDmg"
     downloadURL="https://dl.google.com/earth/client/advanced/current/GoogleEarthProMac-Intel.dmg"
+    # No public version endpoint; URL serves the DMG directly with no version hints.
+    # Proxy the Homebrew Cask version (their CI runs extract_plist; ~1-3 day lag).
+    appNewVersion=$(curl -fsL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/master/Casks/g/google-earth-pro.rb" | sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p')
     expectedTeamID="EQHXZ8M8AV"
     ;;
 googlesoftwareupdate)
@@ -2543,7 +2534,8 @@ gotiengviet)
     name="GoTiengViet"
     type="dmg"
     downloadURL="https://www.trankynam.com/gotv/downloads/GoTiengViet.dmg"
-    appNewVersion=""
+    # Vendor page has the version in a non-machine-readable position; proxy Homebrew Cask.
+    appNewVersion=$(curl -fsL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/master/Casks/g/gotiengviet.rb" | sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p')
     expectedTeamID="KHEMQ2FD9E"
     ;;
 gotomeeting)
@@ -2551,13 +2543,19 @@ gotomeeting)
     name="GoToMeeting"
     type="dmg"
     downloadURL="https://link.gotomeeting.com/latest-dmg"
+    # Redirect resolves to .../builds/g2m/<build>/GoToMeeting.dmg.
+    # CFBundleShortVersionString is 10.19.0.<build> (not derivable from URL);
+    # CFBundleVersion is the bare build number, so compare on that.
+    versionKey="CFBundleVersion"
+    appNewVersion=$(curl -fsIL -o /dev/null -w "%{url_effective}" "${downloadURL}" | sed -nE 's@.*/g2m/([0-9]+)/.*@\1@p')
     expectedTeamID="GFNFVT632V"
     ;;
 gotowebinar)
     name="GoTo"
     type="dmg"
     downloadURL="https://goto-desktop.goto.com/GoTo-arm64.dmg"
-    appNewVersion=""
+    # GoTo publishes an electron-updater manifest with the current version.
+    appNewVersion=$(curl -fsL "https://goto-desktop.goto.com/latest-mac.yml" | sed -nE 's/^version:[[:space:]]+(.+)$/\1/p')
     expectedTeamID="GFNFVT632V"
     ;;
 gpgsuite)
@@ -2584,6 +2582,9 @@ grammarly)
      type="dmg"
      packageID="com.grammarly.ProjectLlama"
      downloadURL="https://download-mac.grammarly.com/Grammarly.dmg"
+     # Grammarly publishes a public Sparkle appcast; first item's shortVersionString
+     # matches both the installer app's CFBundleShortVersionString and the pkg receipt.
+     appNewVersion=$(curl -fsL "https://download-mac.grammarly.com/appcast.xml" | sed -nE 's/.*sparkle:shortVersionString="([^"]+)".*/\1/p' | head -1)
      expectedTeamID="W8F64X92K3"
      # appName="Grammarly Installer.app"
      installerTool="Grammarly Installer.app"
@@ -2621,6 +2622,14 @@ handbrake)
     appNewVersion=$(versionFromGit HandBrake HandBrake )
     expectedTeamID="5X9DE89KYV"
     ;;
+hexfiend)
+    name="Hex Fiend"
+    type="dmg"
+    downloadURL="$(downloadURLFromGit HexFiend HexFiend)"
+    appNewVersion="$(versionFromGit HexFiend HexFiend)"
+    expectedTeamID="QK92QP33YN"
+    ;;
+
 homebrew)
     name="Homebrew"
     type="pkg"
@@ -2718,18 +2727,6 @@ jdk19)
         downloadURL="https://download.oracle.com/java/19/archive/jdk-"$appNewVersion"_macos-aarch64_bin.dmg"
     elif [[ $(arch) == "i386" ]]; then
         downloadURL="https://download.oracle.com/java/19/archive/jdk-"$appNewVersion"_macos-x64_bin.dmg"
-    fi
-    appCustomVersion(){ java --version | grep java | awk '{print $2}' }
-    expectedTeamID="VB5E2TV963"
-    ;;
-jdk20)
-    name="Java SE Development Kit 20"
-    type="pkgInDmg"
-    versionKey="CFBundleShortVersionString"
-    if [[ $(arch) == "arm64" ]]; then
-        downloadURL="https://download.oracle.com/java/20/latest/jdk-20_macos-aarch64_bin.dmg"
-    elif [[ $(arch) == "i386" ]]; then
-        downloadURL="https://download.oracle.com/java/20/latest/jdk-20_macos-x64_bin.dmg"
     fi
     appCustomVersion(){ java --version | grep java | awk '{print $2}' }
     expectedTeamID="VB5E2TV963"
@@ -2974,6 +2971,17 @@ logitune)
     CLIInstaller="LogiTuneInstaller.app/Contents/MacOS/LogiTuneInstaller"
     CLIArguments=(-silent)
     expectedTeamID="QED4VVPZWA"
+    ;;
+loom)
+    name="Loom"
+    type="dmg"
+    if [[ $(arch) == "arm64" ]]; then
+        downloadURL=https://cdn.loom.com/desktop-packages/$(curl -fs https://packages.loom.com/desktop-packages/latest-mac.yml | awk '/url/ && /arm64/ && /dmg/ {print $3}')
+    elif [[ $(arch) == "i386" ]]; then
+        downloadURL=https://cdn.loom.com/desktop-packages/$(curl -fs https://packages.loom.com/desktop-packages/latest-mac.yml | awk '/url/ && ! /arm64/ && /dmg/ {print $3}')
+    fi
+    appNewVersion=$(curl -fs https://packages.loom.com/desktop-packages/latest-mac.yml | awk '/version/ {print $2}' )
+    expectedTeamID="QGD2ZPXZZG"
     ;;
 lucidlink)
     name="LucidLink"
@@ -3541,14 +3549,21 @@ microsoftwordreset)
     ;;
 miniconda)
     type="pkg"
-	packageID="io.continuum.pkg.prepare_installation io.continuum.pkg.run_installation io.continuum.pkg.pathupdate"
+    packageID="io.continuum.pkg.prepare_installation"
+    # PackageInfo carries versions like 'py313_26.3.2-2' — non-numeric chars break
+    # Installomator's default '[0-9.]*' extractor, so read the raw string ourselves.
+    appCustomVersion() { pkgutil --pkg-info io.continuum.pkg.prepare_installation 2>/dev/null | awk '/^version:/ {print $2}'; }
     if [[ $(arch) == arm64 ]]; then
-		name="Miniconda3-latest-MacOSX-arm64"
-		downloadURL="https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.pkg"
-	elif [[ $(arch) == i386 ]]; then
-		name="Miniconda3-latest-MacOSX-x86_64"
-		downloadURL="https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.pkg"
-	fi
+        name="Miniconda3-latest-MacOSX-arm64"
+        downloadURL="https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.pkg"
+        # Proxy Homebrew Cask's on_arm version block (~1-3 day lag).
+        appNewVersion=$(curl -fsL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/master/Casks/m/miniconda.rb" | awk '/on_arm do/,/on_intel do/' | sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p')
+    elif [[ $(arch) == i386 ]]; then
+        name="Miniconda3-latest-MacOSX-x86_64"
+        downloadURL="https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.pkg"
+        # Intel is "Legacy version" in Homebrew (Anaconda has stopped new intel builds).
+        appNewVersion=$(curl -fsL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/master/Casks/m/miniconda.rb" | awk '/on_intel do/,/^end/' | sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p')
+    fi
     expectedTeamID="Z5788K4JT7"
     ;;
 miro)
@@ -3560,6 +3575,9 @@ miro)
     elif [[ $(arch) == i386 ]]; then
         downloadURL="https://desktop.miro.com/platforms/darwin/Install-Miro.dmg"
     fi
+    # Miro publishes no public version endpoint that matches CFBundleShortVersionString,
+    # so we proxy the Homebrew Cask version (extract_plist by their CI; ~1-3 day lag).
+    appNewVersion=$(curl -fsL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/master/Casks/m/miro.rb" | sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p')
     expectedTeamID="M3GM7MFY7U"
     ;;
 motion)
@@ -3599,6 +3617,13 @@ notion)
     appNewVersion=$(curl -fsIL "https://www.notion.so/desktop/mac/download" | grep -i "^location" | awk '{print $2}' | sed -e 's/.*Notion-\(.*\).dmg.*/\1/' | cut -d '-' -f 1)
     expectedTeamID="LBQJ96FQ8D"
     ;;
+omnifocus4)
+    name="OmniFocus"
+    type="dmg"
+    downloadURL=$(curl -fs "https://update.omnigroup.com/appcast/com.omnigroup.OmniFocus4" | xpath '(//rss/channel/item/enclosure/@url)[1]' 2>/dev/null | head -1 | cut -d '"' -f 2)
+    appNewVersion=$( echo "${downloadURL}" | sed -E 's/.*\/[a-zA-Z]*-([0-9.]*)\..*/\1/g' )
+    expectedTeamID="34YW5XSRB7"
+    ;;
 omnigraffle7)
     name="OmniGraffle"
     type="dmg"
@@ -3612,6 +3637,11 @@ openvpnconnect)
     type="pkgInDmg"
     pkgName="OpenVPN_Connect_Installer_signed.pkg"
     downloadURL="https://openvpn.net/downloads/openvpn-connect-v2-macos.dmg"
+    # App's CFBundleShortVersionString is a stale "2.1"; the pkg receipt
+    # net.openvpn.connect carries the real version (e.g. 2.7.1.111) which
+    # matches the filename in the redirect target.
+    packageID="net.openvpn.connect"
+    appNewVersion=$(curl -fsIL -o /dev/null -w "%{url_effective}" "${downloadURL}" | sed -nE 's@.*/openvpn-connect-([0-9.]+)_signed\.dmg$@\1@p')
     expectedTeamID="ACV7L3WCD8"
     ;;
 openvpnconnectv3)
@@ -3791,12 +3821,6 @@ sketchup2026)
     versionKey="CFBundleVersion"
     expectedTeamID="J8PVMCY7KL"
     ;;
-sketchupviewer)
-    name="SketchUpViewer"
-    type="dmg"
-    downloadURL="$(curl -Lfs https://www.sketchup.com/en/sketchup-viewer/downloads | grep -o 'https://download.sketchup.com/SketchUpViewer[0-9\-]*.dmg')"
-    expectedTeamID="J8PVMCY7KL"
-    ;;
 slack)
     name="Slack"
     type="pkg"
@@ -3853,6 +3877,11 @@ sonoss2)
     name="Sonos"
     type="dmg"
     downloadURL="https://www.sonos.com/redir/controller_software_mac2"
+    # Sonos DMG ships CFBundleShortVersionString=17.2 (marketing) and
+    # CFBundleVersion=90.0.67171 (build, encoded in filename Sonos_90.0-67171.dmg).
+    # Only the build is derivable from public sources, so compare on CFBundleVersion.
+    versionKey="CFBundleVersion"
+    appNewVersion=$(curl -fsIL -o /dev/null -w "%{url_effective}" "${downloadURL}" | sed -nE 's@.*/Sonos_([0-9.\-]+)\.dmg$@\1@p' | tr '-' '.')
     expectedTeamID="2G4LW83Q3E"
     ;;
 splashtopbusiness)
@@ -3884,6 +3913,9 @@ spotify)
     elif [[ $(arch) == i386 ]]; then
         downloadURL="https://download.scdn.co/Spotify.dmg"
     fi
+    # No public version endpoint; URL serves DMG directly. Homebrew uses extract_plist;
+    # proxy their cask version (~1-3 day lag).
+    appNewVersion=$(curl -fsL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/master/Casks/s/spotify.rb" | sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p')
     expectedTeamID="2FNC3A47ZF"
     ;;
 sublimemerge)
@@ -3988,13 +4020,6 @@ teamviewerqs)
     appNewVersion=$(curl -fs "https://www.teamviewer.com/en/download/macos/" | grep "Current version" | awk -F': ' '{ print $2 }' | sed 's/<[^>]*>//g')
     appName="TeamViewerQS.app"
     expectedTeamID="H7UGFBUGV6"
-    ;;
-techsmithcapture)
-    # credit Elena Ackley (@elenaelago)
-    name="TechSmith Capture"
-    type="dmg"
-    downloadURL="https://cdn.cloud.techsmith.com/techsmithcapture/mac/TechSmithCapture.dmg"
-    expectedTeamID="7TQL462TU8"
     ;;
 theunarchiver)
     name="The Unarchiver"
@@ -4177,9 +4202,19 @@ ultimakercura)
     ;;
 uniconverter)
     # credit: Gabe Marchan (gabemarchan.com - @darklink87)
-    name="Wondershare UniConverter"
-    type="dmg"
-    downloadURL="http://download.wondershare.com/video-converter-ultimate-mac_full735.dmg"
+    # Wondershare publishes a CRM release-versions API; first item is the latest.
+    # The app bundle embeds the major version (Wondershare UniConverter 17.app);
+    # CFBundleVersion is the API-comparable string (17.3.5) — CFBundleShortVersionString
+    # carries an extra build suffix (17.3.5.108) that doesn't appear in the API.
+    type="zip"
+    appNewVersion=$(curl -sSL "https://crm.wondershare.com/api/v1/support/14207/release-versions" | grep -oE '"version_name":"[^"]+"' | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
+    name="Wondershare UniConverter ${appNewVersion%%.*}"
+    versionKey="CFBundleVersion"
+    if [[ $(arch) == arm64 ]]; then
+        downloadURL="https://download.wondershare.com/cbs_down/uniconverter-mac_arm_${appNewVersion}_full14207.zip"
+    elif [[ $(arch) == i386 ]]; then
+        downloadURL="https://download.wondershare.com/cbs_down/uniconverter-mac_${appNewVersion}_full14207.zip"
+    fi
     expectedTeamID="YZC2T44ZDX"
     ;;
 unityhub)
@@ -4339,16 +4374,6 @@ webexteams)
         downloadURL="https://binaries.webex.com/webex-macos-intel/Webex.dmg"
     fi
     expectedTeamID="DE8Y96K9QP"
-    ;;
-webexmeetings)
-    # credit: Erik Stam (@erikstam)
-    name="Cisco Webex Meetings"
-    type="pkgInDmg"
-    downloadURL="https://akamaicdn.webex.com/client/webexapp.dmg"
-    expectedTeamID="DE8Y96K9QP"
-    targetDir="/Applications"
-    #blockingProcessesMaxCPU="5"
-    blockingProcesses=( Webex )
     ;;
 webextoolsremoval)
     name="WebEx Tools Removal"
