@@ -352,7 +352,7 @@ if [[ $(/usr/bin/arch) == "arm64" ]]; then
     fi
 fi
 VERSION="10.11-lite"
-VERSIONDATE="2026-05-18"
+VERSIONDATE="2026-08-21"
 
 # MARK: Functions
 
@@ -3716,14 +3716,6 @@ raycast)
     appNewVersion="$( curl -fsIL "https://www.raycast.com/download" | grep -i ^location | grep Raycast_ | sed 's/^.*[^0-9]\([0-9]*\.[0-9]*\.[0-9]*\).*$/\1/' )"
     expectedTeamID="SY64MV22J9"
     ;;
-realvncviewer)
-    name="Real VNC Viewer"
-    appName="VNC Viewer.app"
-    type="dmg"
-    downloadURL="https://downloads.realvnc.com/download/file/viewer.files/VNC-Viewer-Latest-MacOSX-universal.dmg"
-    appNewVersion="$(curl -sL https://realvnc.zendesk.com/api/v2/help_center/en-us/articles/5835892358941.json | sed -n 's/.*VNC-Viewer-\([0-9.]*\)-MacOSX.*/\1/p')"
-    expectedTeamID="ZNCQ8JEH7X"
-    ;;
 redgiant)
     name="Red Giant"
     type="dmg"
@@ -4005,11 +3997,11 @@ tailscale)
 teamviewer)
     name="TeamViewer"
     type="pkgInDmg"
-    # packageID="com.teamviewer.teamviewer"
     versionKey="CFBundleShortVersionString"
     pkgName="Install TeamViewer.app/Contents/Resources/Install TeamViewer.pkg"
-    downloadURL="https://download.teamviewer.com/download/TeamViewer.dmg"
-    appNewVersion=$(curl -fs "https://www.teamviewer.com/en/download/macos/" | grep 'data-json' | grep 'full' | awk -F '"' '{ print $4 }' | sed 's/&quot;/"/g' | plutil -extract "data.0.versionNumber" raw -o - -)
+    teamViewerDownloadData=$(curl -fsL "https://www.teamviewer.com/en/download/macos/" | tr "<" "\n<" | grep "cmp-smartdownloadbutton__wrapper" | grep "TeamViewer full client" | sed -E 's/.*data-json="([^"]*)".*/\1/;s/&quot;/"/g;s/&amp;/\&/g')
+    downloadURL=$(getJSONValue "$teamViewerDownloadData" "data[0].downloadLink")
+    appNewVersion=$(getJSONValue "$teamViewerDownloadData" "data[0].versionNumber")
     expectedTeamID="H7UGFBUGV6"
     ;;
 teamviewerqs)

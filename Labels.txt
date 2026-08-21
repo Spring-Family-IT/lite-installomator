@@ -215,7 +215,6 @@ pandoc
 parsec
 postman
 raycast
-realvncviewer
 redgiant
 redshift
 redshiftlite

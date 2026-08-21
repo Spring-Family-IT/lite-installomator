@@ -1,3 +1,8 @@
+# Disabled 2026-08-21: RealVNC ended anonymous downloads. v7 renamed "RealVNC
+# Classic Viewer", available only from the RealVNC Portal (sign-in, Premium/
+# Enterprise). v8 "RealVNC Connect Viewer" is Cloudflare/human-verification
+# gated — no curl-able URL. Deploy manually via Intune pkg wrapper instead.
+# See https://help.realvnc.com/hc/en-us/articles/35745908986653
 realvncviewer)
     name="Real VNC Viewer"
     appName="VNC Viewer.app"
