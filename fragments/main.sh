@@ -22,8 +22,10 @@ if [[ -z $type ]]; then
     exit 1
 fi
 if [[ -z $downloadURL ]]; then
+    # lite: exit 14 (not 1) so callers can treat an empty downloadURL as a
+    # transient/network failure, like downloadURLFromGit does. AAP relies on this.
     printlog "need to provide 'downloadURL'" ERROR
-    exit 1
+    exit 14
 fi
 if [[ -z $expectedTeamID ]]; then
     printlog "need to provide 'expectedTeamID'" ERROR

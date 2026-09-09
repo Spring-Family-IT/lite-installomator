@@ -1,4 +1,8 @@
 #!/bin/zsh --no-rcs
+# lite: Intune/launchd run this without a locale. zsh's echo then fails on
+# feeds containing \u escapes ("character not in range"), which empties
+# appNewVersion/downloadURL in labels that do `echo "$var" | xpath/xmllint`.
+export LANG="${LANG:-en_US.UTF-8}"
 label="" # if no label is sent to the script, this will be used
 
 # lite-installomator

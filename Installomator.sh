@@ -1,4 +1,8 @@
 #!/bin/zsh --no-rcs
+# lite: Intune/launchd run this without a locale. zsh's echo then fails on
+# feeds containing \u escapes ("character not in range"), which empties
+# appNewVersion/downloadURL in labels that do `echo "$var" | xpath/xmllint`.
+export LANG="${LANG:-en_US.UTF-8}"
 label="" # if no label is sent to the script, this will be used
 
 # lite-installomator
@@ -4568,8 +4572,10 @@ if [[ -z $type ]]; then
     exit 1
 fi
 if [[ -z $downloadURL ]]; then
+    # lite: exit 14 (not 1) so callers can treat an empty downloadURL as a
+    # transient/network failure, like downloadURLFromGit does. AAP relies on this.
     printlog "need to provide 'downloadURL'" ERROR
-    exit 1
+    exit 14
 fi
 if [[ -z $expectedTeamID ]]; then
     printlog "need to provide 'expectedTeamID'" ERROR
