@@ -351,8 +351,8 @@ if [[ $(/usr/bin/arch) == "arm64" ]]; then
         rosetta2=no
     fi
 fi
-VERSION="10.11-lite"
-VERSIONDATE="2026-08-21"
+VERSION="10.12-lite"
+VERSIONDATE="2026-09-09"
 
 # MARK: Functions
 
@@ -1558,8 +1558,9 @@ valuesfromarguments)
 1password8)
     name="1Password"
     type="pkg"
-    downloadURL="https://downloads.1password.com/mac/1Password.pkg"
-    appNewVersion=$(curl -s https://releases.1password.com/mac/stable/index.xml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | tail -n1)
+    onepassDetails=$(curl -fs "https://app-updates.agilebits.com/check/2/14.6.1/arm64/OPM8/en/80000000/A1/N")
+    appNewVersion=$(getJSONValue "${onepassDetails}" "version")
+    downloadURL="https://cache.agilebits.com/dist/1P/mac8/1Password-${appNewVersion}.pkg"
     expectedTeamID="2BUA8C4S2C"
     blockingProcesses=( "1Password Extension Helper" "1Password 7" "1Password 8" "1Password" "1PasswordNativeMessageHost" "1PasswordSafariAppExtension" )
     ;;
@@ -1752,6 +1753,13 @@ appleprovideoformats)
     packageID="com.apple.pkg.ProVideoFormats"
     expectedTeamID="Software Update"
     ;;
+arcbrowser)
+    name="Arc"
+    type="dmg"
+    downloadURL="https://releases.arc.net/release/Arc-latest.dmg"
+    appNewVersion=$(curl -fsIL "$downloadURL" | awk 'BEGIN{IGNORECASE=1}/^location:/{gsub("\r",""); print $2}' | tail -n 1 | sed -E 's|.*/Arc-([0-9]+(\.[0-9]+)+)-[0-9]+\.dmg$|\1|')
+    expectedTeamID="S6N382Y83G"
+    ;;
 asana)
     name="Asana"
     type="dmg"
@@ -1767,14 +1775,13 @@ ibmaspera)
     downloadURL=$(curl -fsL https://downloads.ibmaspera.com/downloads/desktop/latest/stable/latest.json | jq -r '.entries.[] | select(.platform == "macos") | .url')
     expectedTeamID="PETKK2G752"
     ;;
-asperaconnect)
-    name="Aspera Connect"
+asperaconnect|\
+ibmasperaconnect)
+    name="IBM Aspera Connect"
     type="pkg"
-    indexFilePath=$(curl -fsL https://ibmaspera.com/help/downloads/desktop | grep 'script type="module"' | grep -o "/.*.js")
-    downloadBaseUrl="https:$(curl -fsL https://ibmaspera.com${indexFilePath} | grep versions.js | grep -o "var i=\"//.*downloads/connect" | sed -E 's/var i="//g')"
-    appInfo=$(curl -fs ${downloadBaseUrl}/latest/versions.js | grep -o "{.*}")
-    appNewVersion=$(echo ${appInfo} | jq -r '.entries.[] | select(.title == "Aspera Connect for macOS") | .version' | awk -F "." '{print$1"."$2"."$3}')
-    downloadURL="${downloadBaseUrl}/latest/$(echo ${appInfo} | jq -r '.entries.[] | select(.title == "Aspera Connect for macOS").links.[] | select(.rel == "enclosure-one-click").href')"
+    appInfo=$(curl -fsL "https://d3gcli72yxqn2z.cloudfront.net/downloads/connect/latest/versions.js"|sed 's/^window.connectVersions = //')
+    appNewVersion=$(getJSONValue "$appInfo" "entries[1].version"|awk -F. '{print $1"."$2"."$3}')
+    downloadURL="https://d3gcli72yxqn2z.cloudfront.net/downloads/connect/latest/$(getJSONValue "$appInfo" "entries[1].links[1].href")"
     expectedTeamID="PETKK2G752"
     ;;
 atlassiancompanion)
@@ -1970,11 +1977,31 @@ carboncopycloner)
     appNewVersion=$(sed -E 's/.*-([0-9.]*)\.zip/\1/g' <<< $downloadURL | sed 's/\.[^.]*$//')
     expectedTeamID="L4F2DED5Q7"
     ;;
-chatgpt)
+chatgpt|\
+codex)
     name="ChatGPT"
-    type="dmg"
-    downloadURL="https://persistent.oaistatic.com/sidekick/public/ChatGPT_Desktop_public_latest.dmg"
-    appNewVersion="$(curl -fs "https://persistent.oaistatic.com/sidekick/public/sparkle_public_appcast.xml" | xpath '(//rss/channel/item/title)[1]/text()' 2>/dev/null)"
+    type="zip"
+    if [[ $(arch) == "arm64" ]]; then
+        sparkleData=$(curl -fsL "https://persistent.oaistatic.com/codex-app-prod/appcast.xml")
+        appNewVersion=$(echo "$sparkleData" | xpath 'string(//rss/channel/item[1]/sparkle:shortVersionString)')
+        downloadURL=$(echo "$sparkleData" | xpath 'string(//rss/channel/item[1]/enclosure/@url)')
+    else
+        printlog "ChatGPT is only compatible with Apple Silicon (arm64) Macs." ERROR
+        cleanupAndExit 95 "ChatGPT requires Apple Silicon" ERROR
+    fi
+    blockingProcesses=( "ChatGPT" )
+    expectedTeamID="2DC432GLL2"
+    ;;
+chatgptclassic)
+    name="ChatGPT Classic"
+    type="pkg"
+    if [[ $(arch) == "arm64" ]]; then
+        downloadURL="https://persistent.oaistatic.com/sidekick/public/ChatGPT_Classic.pkg"
+    else
+        printlog "ChatGPT Classic is only compatible with Apple Silicon (arm64) Macs." ERROR
+        cleanupAndExit 95 "ChatGPT Classic requires Apple Silicon" ERROR
+    fi
+    appNewVersion=$(curl -fs "https://persistent.oaistatic.com/sidekick/public/sparkle_public_appcast.xml" | xpath 'string((//rss/channel/item/title)[1])' 2>/dev/null)
     expectedTeamID="2DC432GLL2"
     ;;
 chromeremotedesktop)
@@ -2027,7 +2054,7 @@ clickshare)
     name="ClickShare"
     type="zip"
     json_feed=$(curl -fsL "https://assets.cloud.barco.com/clickshare/release/release.mac")
-    appNewVersion=$(getJSONValue "${json_feed}" 'version')
+    appNewVersion=$(getJSONValue "${json_feed}" 'version' | tr -d 'b' | tr "-" ".")
     file_name=$(getJSONValue "${json_feed}" 'name')
     downloadURL="https://assets.cloud.barco.com/clickshare/release/${file_name}"
     expectedTeamID="P6CDJZR997"
@@ -2128,10 +2155,10 @@ discord)
 diskdrill)
     name="Disk Drill"
     type="dmg"
-    appname="Disk Drill.app"
     downloadURL="https://dl.cleverfiles.com/diskdrill.dmg"
     appNewVersion=$( curl -fsL "https://www.cleverfiles.com/releases/auto-update/dd5-newestr.xml" | xpath 'string(//rss/channel/item/enclosure/@sparkle:version)' 2>/dev/null)
-    expectedTeamID="A3W62KZY8Z"
+    versionKey="CFBundleVersion"
+    expectedTeamID="Z6C22PNU8R"
     ;;
 displaylinkmanager)
     name="DisplayLink Manager"
@@ -2512,7 +2539,12 @@ googleearth)
     downloadURL="https://dl.google.com/earth/client/advanced/current/GoogleEarthProMac-Intel.dmg"
     # No public version endpoint; URL serves the DMG directly with no version hints.
     # Proxy the Homebrew Cask version (their CI runs extract_plist; ~1-3 day lag).
+    # Upstream scrapes "7.3" from google.com/earth/about/versions, which can never
+    # detect point releases, so it is not used here.
     appNewVersion=$(curl -fsL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/master/Casks/g/google-earth-pro.rb" | sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p')
+    # App reports CFBundleShortVersionString="7.3" but CFBundleVersion="7.3.7.1327";
+    # only the latter matches the cask version, so compare on it.
+    versionKey="CFBundleVersion"
     expectedTeamID="EQHXZ8M8AV"
     ;;
 googlesoftwareupdate)
@@ -2674,6 +2706,20 @@ inkscape)
     fi
     expectedTeamID="SW3D6BB6A6"
     ;;
+intunelogwatch)
+    name="IntuneLogWatch"
+    type="dmg"
+    downloadURL="$(downloadURLFromGit gilburns IntuneLogWatch)"
+    appNewVersion="$(versionFromGit gilburns IntuneLogWatch)"
+    expectedTeamID="G4MQ57TVLE"
+    ;;
+intunepppcutility)
+    name="Intune PPPC Utility"
+    type="zip"
+    downloadURL="$(downloadURLFromGit gilburns Intune-PPPC-Utility)"
+    appNewVersion="$(versionFromGit gilburns Intune-PPPC-Utility)"
+    expectedTeamID="G4MQ57TVLE"
+    ;;
 iterm2)
     name="iTerm"
     type="zip"
@@ -2747,13 +2793,14 @@ jre8)
     name="Java Runtime Environment 8"
     type="pkgInDmg"
     versionKey="CFBundleVersion"
-    versionURL=$(curl -fs "https://javadl-esd-secure.oracle.com/update/mac/map-mac-1.8.0.xml" | xpath '( //java-update-map/mapping/url)[last()]' 2>/dev/null | cut -d\> -f2 | cut -d\< -f1)
-    appNewVersion=$(curl -fs "${versionURL}" | xpath '(//rss/channel/item/enclosure/@sparkle:version)' 2>/dev/null | cut -d '"' -f 2)
-    appBuildVersion=$(echo $appNewVersion | cut -d. -f3)
-    downloadURL="$(curl -fs "${versionURL}" | xpath '(//rss/channel/item/enclosure/@url)[last()]' 2>/dev/null | cut -d '"' -f 2)"
+    sparkleData=$(curl -fs "$(curl -fs "https://javadl-esd-secure.oracle.com/update/mac/map-mac-1.8.0.xml" | xmllint --xpath 'string((//java-update-map/mapping/url[not(contains(., "-cb.xml"))])[last()])' -)")
+    appNewVersion=$(echo "$sparkleData" | xmllint --xpath 'string((//*[local-name()="enclosure"]/@*[local-name()="version"])[last()])' -)
+    appBuildVersion=$(echo "$appNewVersion" | cut -d. -f3)
+    downloadURL=$(echo "$sparkleData" | xmllint --xpath 'string((//*[local-name()="enclosure"]/@url)[last()])' -)
     pkgName="Java 8 Update ${appBuildVersion}.app/Contents/Resources/JavaAppletPlugin.pkg"
     appCustomVersion(){ defaults read "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Info.plist" "${versionKey}" 2>/dev/null }
     expectedTeamID="VB5E2TV963"
+    blockingProcesses=( NONE )
     ;;
 knockknock)
     name="KnockKnock"
@@ -2939,10 +2986,9 @@ logitechoptionsplus)
     archiveName="logioptionsplus_installer.zip"
     installerTool="logioptionsplus_installer.app"
     type="zip"
-    downloadURL="https://download01.logi.com/web/ftp/pub/techsupport/optionsplus/logioptionsplus_installer.zip"
-    # Latest version of Logi Options+ requires macOS 13+
-    # If older macOS is specified in the url for appNewVersion, it will never correspond to the installed version
-    appNewVersion=$(curl -fs "https://support.logi.com/api/v2/help_center/en-us/articles.json?label_names=webcontent=productdownload,webos=mac-macos-x-13.0" | tr "," "\n" | grep -A 10 "macOS" | grep -B 5 -ie "https.*/.*/optionsplus/.*\.zip" | grep "Software Version" | sed 's/\\u[0-9a-z][0-9a-z][0-9a-z][0-9a-z]//g' | grep -ioe "Software Version.*[0-9.]*" | tr "/" "\n" | grep -oe "[0-9.]*" | head -1)
+    osMajorVersion=$(sw_vers -productVersion | awk -F "." '{print$1}')
+    downloadURL="$(curl -fs "https://support.logi.com/api/v2/help_center/en-us/articles.json?label_names=webcontent=productdownload,webos=mac-macos-x-${osMajorVersion}.0" | tr "," "\n"  | grep  -o "https://.*logioptionsplus.*zip" | head -1)"
+    appNewVersion=$(curl -fs "https://support.logi.com/api/v2/help_center/en-us/articles.json?label_names=webcontent=productdownload,webos=mac-macos-x-${osMajorVersion}.0" | tr "," "\n" | grep -A 10 "macOS" | grep -B 5 -ie "https.*/.*/optionsplus/.*\.zip" | grep "Software Version" | sed 's/\\u[0-9a-z][0-9a-z][0-9a-z][0-9a-z]//g' | grep -ioe "Software Version.*[0-9.]*" | tr "/" "\n" | grep -oe "[0-9.]*" | head -1)
     CLIInstaller="logioptionsplus_installer.app/Contents/MacOS/logioptionsplus_installer"
     CLIArguments=(--quiet)
     expectedTeamID="QED4VVPZWA"
@@ -2962,14 +3008,10 @@ logitechoptionsplusoffline)
     expectedTeamID="QED4VVPZWA"
     ;;
 logitune)
-    name="LogiTune"
-    archiveName="LogiTuneInstaller.dmg"
-    appName="LogiTuneInstaller.app"
-    type="dmg"
-    downloadURL="https://software.vc.logitech.com/downloads/tune/LogiTuneInstaller.dmg"
-    appNewVersion=$(curl -fs "https://support.logi.com/api/v2/help_center/en-us/articles.json?label_names=webcontent=productdownload,webos=mac-macos-x-11.0" | tr "," "\n" | grep -A 10 "macOS" | grep -B 5 -ie "https.*/.*/optionsplus/.*\.zip" | grep "Software Version" | sed 's/\\u[0-9a-z][0-9a-z][0-9a-z][0-9a-z]//g' | grep -ioe "Software Version.*[0-9.]*" | tr "/" "\n" | grep -oe "[0-9.]*" | head -1)
-    CLIInstaller="LogiTuneInstaller.app/Contents/MacOS/LogiTuneInstaller"
-    CLIArguments=(-silent)
+    name="Logi Tune"
+    type="pkg"
+    downloadURL="https://software.vc.logitech.com/downloads/tune/LogiTuneInstaller.pkg"
+    appNewVersion=$(curl -fs "https://support.logi.com/api/v2/help_center/en-us/articles.json?label_names=webcontent=productdownload,webos=mac-macos-x-11.0" | tr '}' '\n' | grep "Logi Tune" | grep -o "Software Version: <\/span><\/b>[0-9.]*" | grep -oE "[0-9.]+" | head -1)
     expectedTeamID="QED4VVPZWA"
     ;;
 loom)
@@ -3580,6 +3622,13 @@ miro)
     appNewVersion=$(curl -fsL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/master/Casks/m/miro.rb" | sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p')
     expectedTeamID="M3GM7MFY7U"
     ;;
+monotypeconnect)
+    name="Monotype Connect"
+    type="dmg"
+    downloadURL="https://links.extensis.com/extensis_connect/ec_latest?language=en&platform=mac"
+    appNewVersion=$(curl -fsS -D - -o /dev/null "$downloadURL" | awk 'BEGIN{IGNORECASE=1}/^location:/{gsub("\r",""); print $2}' | tail -n 1 | sed -E 's|.*/ExtensisConnect-M-([0-9]+)-([0-9]+)-([0-9]+)\.dmg$|\1.\2.\3|')
+    expectedTeamID="J6MMHGD9D6"
+    ;;
 motion)
     name="Motion"
     type="zip"
@@ -3753,8 +3802,9 @@ redshiftlite)
 royaltsx)
     name="Royal TSX"
     type="dmg"
-    downloadURL=$(curl -fs https://royaltsx-v6.royalapps.com/updates_stable | xpath '//rss/channel/item[1]/enclosure/@url'  2>/dev/null | cut -d '"' -f 2)
-    appNewVersion=$(curl -fs https://royaltsx-v6.royalapps.com/updates_stable | xpath '//rss/channel/item[1]/enclosure/@sparkle:shortVersionString'  2>/dev/null | cut -d '"' -f 2)
+    sparkleData=$(curl -fsL "https://royaltsx-v6.royalapps.com/updates_stable")
+    downloadURL=$(echo "$sparkleData" | xpath '//rss/channel/item[1]/enclosure/@url' 2>/dev/null | cut -d '"' -f 2)
+    appNewVersion=$(echo "$sparkleData" | xpath '//rss/channel/item[1]/enclosure/@sparkle:shortVersionString' 2>/dev/null | cut -d '"' -f 2)
     expectedTeamID="VXP8K9EDP6"
     ;;
 screamingfrogseospider)
@@ -3863,17 +3913,22 @@ sonoss1)
     name="Sonos S1 Controller"
     type="dmg"
     downloadURL="https://www.sonos.com/redir/controller_software_mac"
+    # Sonos' Akamai edge returns 403 to non-browser requests on the redirect;
+    # the full header set below is required (dropping any part brings back 403).
+    curlOptions=( -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36" -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" -H "Accept-Language: en-US,en;q=0.9" -H "Accept-Encoding: gzip, deflate, br" -H "Sec-Fetch-Dest: document" -H "Sec-Fetch-Mode: navigate" -H "Sec-Fetch-Site: none" )
     expectedTeamID="2G4LW83Q3E"
     ;;
 sonoss2)
     name="Sonos"
     type="dmg"
     downloadURL="https://www.sonos.com/redir/controller_software_mac2"
-    # Sonos DMG ships CFBundleShortVersionString=17.2 (marketing) and
-    # CFBundleVersion=90.0.67171 (build, encoded in filename Sonos_90.0-67171.dmg).
-    # Only the build is derivable from public sources, so compare on CFBundleVersion.
+    # Sonos' Akamai edge returns 403 to non-browser requests on the redirect;
+    # the full header set below is required (dropping any part brings back 403).
+    curlOptions=( -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36" -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" -H "Accept-Language: en-US,en;q=0.9" -H "Accept-Encoding: gzip, deflate, br" -H "Sec-Fetch-Dest: document" -H "Sec-Fetch-Mode: navigate" -H "Sec-Fetch-Site: none" )
+    # DMG ships CFBundleShortVersionString=17.x (marketing) and CFBundleVersion=90.0.xxxxx
+    # (build, encoded in filename Sonos_90.0-xxxxx.dmg). Only the build is derivable, so compare on it.
     versionKey="CFBundleVersion"
-    appNewVersion=$(curl -fsIL -o /dev/null -w "%{url_effective}" "${downloadURL}" | sed -nE 's@.*/Sonos_([0-9.\-]+)\.dmg$@\1@p' | tr '-' '.')
+    appNewVersion=$(curl -sL -r 0-0 -o /dev/null -w "%{url_effective}" "${curlOptions[@]}" "${downloadURL}" | sed -nE 's@.*/Sonos_([0-9.\-]+)\.dmg$@\1@p' | tr '-' '.')
     expectedTeamID="2G4LW83Q3E"
     ;;
 splashtopbusiness)
@@ -3900,14 +3955,17 @@ splashtopstreamer)
 spotify)
     name="Spotify"
     type="dmg"
+    tmpSpotifyDir=$(mktemp -d)
+    zipSpotifyPath="$tmpSpotifyDir/SpotifyInstaller.zip"
+    curl -fsSL "https://download.scdn.co/SpotifyInstaller.zip" -o "$zipSpotifyPath"
+    unzip -q "$zipSpotifyPath" -d "$tmpSpotifyDir"
+    appNewVersion=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$tmpSpotifyDir/Install Spotify.app/Contents/Info.plist")
+    rm -rf "$tmpSpotifyDir"
     if [[ $(arch) == arm64 ]]; then
         downloadURL="https://download.scdn.co/SpotifyARM64.dmg"
     elif [[ $(arch) == i386 ]]; then
         downloadURL="https://download.scdn.co/Spotify.dmg"
     fi
-    # No public version endpoint; URL serves DMG directly. Homebrew uses extract_plist;
-    # proxy their cask version (~1-3 day lag).
-    appNewVersion=$(curl -fsL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/master/Casks/s/spotify.rb" | sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p')
     expectedTeamID="2FNC3A47ZF"
     ;;
 sublimemerge)

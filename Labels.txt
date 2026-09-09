@@ -13,6 +13,7 @@ airtamepkg
 alfred
 anaconda
 appleprovideoformats
+arcbrowser
 asana
 aspera
 asperaconnect
@@ -38,6 +39,7 @@ camtasia2026
 canva
 carboncopycloner
 chatgpt
+chatgptclassic
 chromeremotedesktop
 chronoagent
 chronosync
@@ -47,6 +49,7 @@ clickshare
 clickup
 cmake
 coconutbattery
+codex
 crashplan
 crashplansmb
 cursorai
@@ -113,8 +116,11 @@ homebrew
 i1profiler
 ibarcoder
 ibmaspera
+ibmasperaconnect
 imageoptim
 inkscape
+intunelogwatch
+intunepppcutility
 iterm2
 jabradirect
 jdk17
@@ -199,6 +205,7 @@ microsoftword
 microsoftwordreset
 miniconda
 miro
+monotypeconnect
 motion
 mountainduck
 nodejs
