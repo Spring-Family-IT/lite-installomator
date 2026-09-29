@@ -246,14 +246,29 @@ if [[ (-n $appversion && -n "$updateTool") || "$type" == "updateronly" ]]; then
 
     if [[ $DEBUG -ne 1 ]]; then
         if runUpdateTool; then
-            finishing
-            cleanupAndExit 0 "updateTool has run" REQ
+            # lite: vendor updaters can exit 0 without updating (staged
+            # rollouts, updater waiting for admin setup). Verify the version
+            # on disk and fall back to the regular installer if still behind.
+            sleep 3
+            getAppVersion
+            if [[ $type == "updateronly" || -z $appNewVersion ]] || is-at-least "$appNewVersion" "$appversion"; then
+                finishing
+                cleanupAndExit 0 "updateTool has run" REQ
+            fi
+            printlog "updateTool ran but $name is still $appversion (latest $appNewVersion)" WARN
         elif [[ $type == "updateronly" ]];then
             cleanupAndExit 0 "type is $type so we end here." REQ
         fi # otherwise continue
     else
         printlog "DEBUG mode 1 enabled, not running update tool" WARN
     fi
+fi
+
+# lite: UPDATER_ONLY=yes (set by AAP while the app is open) never reaches the
+# installer, which would have to quit the app — also when updateTool was
+# cleared (INSTALL=force, IGNORE_APP_STORE_APPS=yes) or is missing
+if [[ $UPDATER_ONLY == "yes" && $DEBUG -ne 1 ]]; then
+    cleanupAndExit 30 "vendor updater did not bring $name to ${appNewVersion:-latest}, installer skipped (UPDATER_ONLY)" REQ
 fi
 
 # MARK: download the archive

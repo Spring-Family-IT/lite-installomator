@@ -132,6 +132,14 @@ INSTALL=""
 #                  if it is newer/different in version
 #  - force         Install even if it’s the same version
 
+# lite: vendor updater only (labels with updateTool)
+UPDATER_ONLY=""
+# options:
+#  -               When not set, fall back to the regular installer if the
+#                  updateTool did not bring the app to appNewVersion
+#  - yes           Run the updateTool only; exit 30 if the app is still behind
+#                  (used by AAP while the app is open, so it isn't quit)
+
 
 # Re-opening of closed app
 REOPEN="yes"

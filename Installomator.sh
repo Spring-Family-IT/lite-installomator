@@ -132,6 +132,14 @@ INSTALL=""
 #                  if it is newer/different in version
 #  - force         Install even if it’s the same version
 
+# lite: vendor updater only (labels with updateTool)
+UPDATER_ONLY=""
+# options:
+#  -               When not set, fall back to the regular installer if the
+#                  updateTool did not bring the app to appNewVersion
+#  - yes           Run the updateTool only; exit 30 if the app is still behind
+#                  (used by AAP while the app is open, so it isn't quit)
+
 
 # Re-opening of closed app
 REOPEN="yes"
@@ -356,7 +364,7 @@ if [[ $(/usr/bin/arch) == "arm64" ]]; then
     fi
 fi
 VERSION="10.12-lite"
-VERSIONDATE="2026-09-14"
+VERSIONDATE="2026-09-29"
 
 # MARK: Functions
 
@@ -1259,10 +1267,11 @@ finishing() {
     sleep 3 # wait a moment to let spotlight catch up
     getAppVersion
 
-    if [[ -z $appNewVersion ]]; then
+    # lite: report the version found on disk, not the one we aimed for
+    if [[ -z $appversion && -z $appNewVersion ]]; then
         message="Installed $name"
     else
-        message="Installed $name, version $appNewVersion"
+        message="Installed $name, version ${appversion:-$appNewVersion}"
     fi
 
     printlog "$message" REQ
@@ -1871,12 +1880,12 @@ brave)
     if [[ $(arch) != "i386" ]]; then
         printlog "Architecture: arm64 (not i386)"
         downloadURL=$(curl -fsIL https://laptop-updates.brave.com/latest/osxarm64/release | grep -i "^location" | sed -E 's/.*(https.*\.dmg).*/\1/g')
-        appNewVersion="$(curl -fsL "https://updates.bravesoftware.com/sparkle/Brave-Browser/stable-arm64/appcast.xml" | xpath '//rss/channel/item[last()]/enclosure/@sparkle:version' 2>/dev/null  | cut -d '"' -f 2)"
+        appNewVersion="$(curl -fsL "https://updates.bravesoftware.com/sparkle/Brave-Browser/stable-arm64/appcast.xml" | grep -oE 'sparkle:version="[0-9.]+"' | cut -d '"' -f 2 | sort -V | tail -n 1)" # lite: highest version, feed order is not reliable
         #appNewVersion="96.$(curl -fsL "https://updates.bravesoftware.com/sparkle/Brave-Browser/stable-arm64/appcast.xml" | xpath '//rss/channel/item[last()]/enclosure/@sparkle:shortVersionString' 2>/dev/null  | cut -d '"' -f 2 | cut -d "." -f1-3)"
     else
         printlog "Architecture: i386"
         downloadURL=$(curl -fsIL https://laptop-updates.brave.com/latest/osx/release | grep -i "^location" | sed -E 's/.*(https.*\.dmg).*/\1/g')
-        appNewVersion="$(curl -fsL "https://updates.bravesoftware.com/sparkle/Brave-Browser/stable/appcast.xml" | xpath '//rss/channel/item[last()]/enclosure/@sparkle:version' 2>/dev/null  | cut -d '"' -f 2)"
+        appNewVersion="$(curl -fsL "https://updates.bravesoftware.com/sparkle/Brave-Browser/stable/appcast.xml" | grep -oE 'sparkle:version="[0-9.]+"' | cut -d '"' -f 2 | sort -V | tail -n 1)" # lite: highest version, feed order is not reliable
         #appNewVersion="96.$(curl -fsL "https://updates.bravesoftware.com/sparkle/Brave-Browser/stable/appcast.xml" | xpath '//rss/channel/item[last()]/enclosure/@sparkle:shortVersionString' 2>/dev/null  | cut -d '"' -f 2 | cut -d "." -f1-3)"
     fi
     versionKey="CFBundleVersion"
@@ -1888,7 +1897,7 @@ bravepkg)
     type="pkg"
     downloadURL="https://referrals.brave.com/latest/Brave-Browser.pkg" # Universal
         # https://referrals.brave.com/latest/Brave-Browser-arm64.pkg - ARM64
-    appNewVersion="$(curl -fsL "https://updates.bravesoftware.com/sparkle/Brave-Browser/stable/appcast.xml" | xpath '//rss/channel/item[last()]/enclosure/@sparkle:version' 2>/dev/null  | cut -d '"' -f 2)"
+    appNewVersion="$(curl -fsL "https://updates.bravesoftware.com/sparkle/Brave-Browser/stable/appcast.xml" | grep -oE 'sparkle:version="[0-9.]+"' | cut -d '"' -f 2 | sort -V | tail -n 1)" # lite: highest version, feed order is not reliable
     versionKey="CFBundleVersion"
     expectedTeamID="KL8N8XSYF4"
     ;;
@@ -2140,6 +2149,18 @@ darktable)
     appNewVersion=$(versionFromGit darktable-org darktable)
     expectedTeamID="85Q3K4KQRY"
     ;;
+dia)
+    name="Dia"
+    type="dmg"
+    if [[ $(arch) == "arm64" ]]; then
+        downloadURL="https://releases.diabrowser.com/release/Dia-latest.dmg"
+    else
+        printlog "Dia is only compatible with Apple Silicon (arm64) Macs." ERROR
+        cleanupAndExit 95 "Dia requires Apple Silicon" ERROR
+    fi
+    appNewVersion=$(curl -sIL "$downloadURL" | sed -nE 's/.*Dia-([0-9]+([.][0-9]+)+)-[0-9]+[.]dmg.*/\1/p')
+    expectedTeamID="S6N382Y83G"
+    ;;
 dialog|\
 swiftdialog)
     name="Dialog"
@@ -2271,11 +2292,12 @@ dropboxenterprise)
 duckduckgo)
     name="DuckDuckGo"
     type="dmg"
-    #downloadURL="https://staticcdn.duckduckgo.com/macos-desktop-browser/duckduckgo.dmg"
-    downloadURL=$(curl -fs https://staticcdn.duckduckgo.com/macos-desktop-browser/appcast.xml | xpath '(//rss/channel/item/enclosure/@url)[last()]' 2>/dev/null | cut -d '"' -f2)
-    #downloadURL=$(curl -fs https://staticcdn.duckduckgo.com/macos-desktop-browser/appcast.xml | xpath '(//rss/channel/item/enclosure/@url)[1]' 2>/dev/null | cut -d '"' -f2)
-    appNewVersion=$(curl -fs https://staticcdn.duckduckgo.com/macos-desktop-browser/appcast.xml | xpath '(//rss/channel/item/enclosure/@sparkle:version)[last()]' 2>/dev/null | cut -d '"' -f2)
-    #appNewVersion=$(curl -fs https://staticcdn.duckduckgo.com/macos-desktop-browser/appcast.xml | xpath '(//rss/channel/item/sparkle:shortVersionString)[1]' 2>/dev/null | cut -d ">" -f2 | cut -d "<" -f1)
+    # lite: appcast2 mixes public and internal-channel builds, newest first.
+    # Take the highest public version (items without <sparkle:channel>) and
+    # the enclosure URL of that same item.
+    ddgXML=$(curl -fsL "https://staticcdn.duckduckgo.com/macos-desktop-browser/appcast2.xml")
+    appNewVersion=$(printf "%s\n" "$ddgXML" | xpath '//rss/channel/item[not(sparkle:channel)]/sparkle:shortVersionString/text()' 2>/dev/null | grep -oE '^[0-9.]+$' | sort -V | tail -n 1)
+    downloadURL=$(printf "%s\n" "$ddgXML" | xpath "(//rss/channel/item[not(sparkle:channel)][sparkle:shortVersionString='${appNewVersion}']/enclosure/@url)[1]" 2>/dev/null | cut -d '"' -f 2)
     expectedTeamID="HKE973VLUW"
     ;;
 easeusdatarecoverywizard)
@@ -2991,9 +3013,16 @@ logitechoptionsplus)
     archiveName="logioptionsplus_installer.zip"
     installerTool="logioptionsplus_installer.app"
     type="zip"
+    # lite: Logitech tags its download articles per macOS major and lags new
+    # releases (macOS 27 had no articles at launch), so fall back to the newest
+    # macOS major that has any.
     osMajorVersion=$(sw_vers -productVersion | awk -F "." '{print$1}')
-    downloadURL="$(curl -fs "https://support.logi.com/api/v2/help_center/en-us/articles.json?label_names=webcontent=productdownload,webos=mac-macos-x-${osMajorVersion}.0" | tr "," "\n"  | grep  -o "https://.*logioptionsplus.*zip" | head -1)"
-    appNewVersion=$(curl -fs "https://support.logi.com/api/v2/help_center/en-us/articles.json?label_names=webcontent=productdownload,webos=mac-macos-x-${osMajorVersion}.0" | tr "," "\n" | grep -A 10 "macOS" | grep -B 5 -ie "https.*/.*/optionsplus/.*\.zip" | grep "Software Version" | sed 's/\\u[0-9a-z][0-9a-z][0-9a-z][0-9a-z]//g' | grep -ioe "Software Version.*[0-9.]*" | tr "/" "\n" | grep -oe "[0-9.]*" | head -1)
+    for (( logiOS = osMajorVersion; logiOS >= osMajorVersion - 3; logiOS-- )); do
+        logiJSON=$(curl -fs "https://support.logi.com/api/v2/help_center/en-us/articles.json?label_names=webcontent=productdownload,webos=mac-macos-x-${logiOS}.0")
+        [[ "$logiJSON" == *logioptionsplus*zip* ]] && break
+    done
+    downloadURL="$(printf "%s" "$logiJSON" | tr "," "\n"  | grep  -o "https://.*logioptionsplus.*zip" | head -1)"
+    appNewVersion=$(printf "%s" "$logiJSON" | tr "," "\n" | grep -A 10 "macOS" | grep -B 5 -ie "https.*/.*/optionsplus/.*\.zip" | grep "Software Version" | sed 's/\\u[0-9a-z][0-9a-z][0-9a-z][0-9a-z]//g' | grep -ioe "Software Version.*[0-9.]*" | tr "/" "\n" | grep -oe "[0-9.]*" | head -1)
     CLIInstaller="logioptionsplus_installer.app/Contents/MacOS/logioptionsplus_installer"
     CLIArguments=(--quiet)
     expectedTeamID="QED4VVPZWA"
@@ -4357,6 +4386,14 @@ vscode)
     appName="Visual Studio Code.app"
     blockingProcesses=( Code )
     ;;
+vivaldi)
+    name="Vivaldi"
+    type="tbz"
+    vivaldiXML=$(curl -fsL "https://update.vivaldi.com/update/1.0/public/mac/appcast.xml")
+    appNewVersion=$(printf "%s\n" "$vivaldiXML" | xpath 'string(//rss/channel/item/sparkle:shortVersionString)')
+    downloadURL=$(printf "%s\n" "$vivaldiXML" | xpath 'string(//rss/channel/item/enclosure/@url)')
+    expectedTeamID="4XF3XNRN6Y"
+    ;;
 vlc)
     # VLC is a versatile, open-source multimedia player that supports a wide range of audio, video, and streaming formats across multiple platforms
     name="VLC"
@@ -4516,6 +4553,17 @@ zbrush2025)
     expectedTeamID="4ZY22YGXQG"
     ;;
 
+zen|\
+zenbrowser)
+    # credit: Tully Jagoe
+    name="Zen"
+    type="dmg"
+    appNewVersion=$(versionFromGit zen-browser desktop)
+    versionKey="CFBundleShortVersionString"
+    downloadURL="https://github.com/zen-browser/desktop/releases/latest/download/zen.macos-universal.dmg"
+    archiveName="zen.macos-universal.dmg"
+    expectedTeamID="9V5K9TP787"
+    ;;
 zoom)
     name="zoom.us"
     type="pkg"
@@ -4797,14 +4845,29 @@ if [[ (-n $appversion && -n "$updateTool") || "$type" == "updateronly" ]]; then
 
     if [[ $DEBUG -ne 1 ]]; then
         if runUpdateTool; then
-            finishing
-            cleanupAndExit 0 "updateTool has run" REQ
+            # lite: vendor updaters can exit 0 without updating (staged
+            # rollouts, updater waiting for admin setup). Verify the version
+            # on disk and fall back to the regular installer if still behind.
+            sleep 3
+            getAppVersion
+            if [[ $type == "updateronly" || -z $appNewVersion ]] || is-at-least "$appNewVersion" "$appversion"; then
+                finishing
+                cleanupAndExit 0 "updateTool has run" REQ
+            fi
+            printlog "updateTool ran but $name is still $appversion (latest $appNewVersion)" WARN
         elif [[ $type == "updateronly" ]];then
             cleanupAndExit 0 "type is $type so we end here." REQ
         fi # otherwise continue
     else
         printlog "DEBUG mode 1 enabled, not running update tool" WARN
     fi
+fi
+
+# lite: UPDATER_ONLY=yes (set by AAP while the app is open) never reaches the
+# installer, which would have to quit the app — also when updateTool was
+# cleared (INSTALL=force, IGNORE_APP_STORE_APPS=yes) or is missing
+if [[ $UPDATER_ONLY == "yes" && $DEBUG -ne 1 ]]; then
+    cleanupAndExit 30 "vendor updater did not bring $name to ${appNewVersion:-latest}, installer skipped (UPDATER_ONLY)" REQ
 fi
 
 # MARK: download the archive

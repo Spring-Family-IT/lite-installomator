@@ -899,10 +899,11 @@ finishing() {
     sleep 3 # wait a moment to let spotlight catch up
     getAppVersion
 
-    if [[ -z $appNewVersion ]]; then
+    # lite: report the version found on disk, not the one we aimed for
+    if [[ -z $appversion && -z $appNewVersion ]]; then
         message="Installed $name"
     else
-        message="Installed $name, version $appNewVersion"
+        message="Installed $name, version ${appversion:-$appNewVersion}"
     fi
 
     printlog "$message" REQ

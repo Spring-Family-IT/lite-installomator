@@ -56,6 +56,7 @@ cursorai
 cyberduck
 daisydisk
 darktable
+dia
 dialog
 discord
 diskdrill
@@ -286,6 +287,7 @@ virtualboxbeta
 virtualboxlatest
 virtualboxstable
 visualstudiocode
+vivaldi
 vlc
 vmwarefusion
 vmwarehorizonclient
@@ -305,6 +307,8 @@ yubicoauthenticator
 yubikeymanager
 yubikeymanagerqt
 zbrush2025
+zen
+zenbrowser
 zoom
 zoomoutlookplugin
 zoomoutlookpluginremoval
